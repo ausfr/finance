@@ -1,6 +1,6 @@
 // CHANGE THIS TO YOUR GCP PUBLIC IP
 const API_URL = "http://34.10.27.200:3000"; 
-const CORRECT_PIN = "1234";
+const CORRECT_PIN = "1080";
 
 // 1. PIN Security
 function checkPin() {
