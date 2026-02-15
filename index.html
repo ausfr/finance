@@ -3,72 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Finance Pro</title>
+    <title>Finance Tracker Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* PIN Overlay Styling */
         #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
-        .chart-container { max-height: 300px; margin-bottom: 2rem; }
+        .card { border-radius: 10px; border: none; }
+        .amount-pos { color: #2ecc71; font-weight: bold; }
+        .amount-neg { color: #e74c3c; font-weight: bold; }
     </style>
 </head>
 <body class="bg-light">
 
     <div id="auth-overlay">
         <div class="card p-4 shadow text-center" style="width: 300px;">
-            <h3>Enter PIN</h3>
-            <input type="password" id="pin-input" class="form-control my-3 text-center" maxlength="4" autofocus>
-            <button onclick="checkPin()" class="btn btn-primary w-100">Unlock Dashboard</button>
+            <h3 class="mb-3">Enter PIN</h3>
+            <input type="password" id="pin-input" class="form-control mb-3 text-center" maxlength="4" placeholder="****">
+            <button onclick="checkPin()" class="btn btn-primary w-100">Unlock</button>
         </div>
     </div>
 
     <div id="app-content" class="container py-4 hidden">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Finance Dashboard</h2>
-            <h3 id="total-balance" class="text-primary">$0.00</h3>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6 mx-auto bg-white p-3 rounded shadow-sm">
-                <canvas id="categoryChart"></canvas>
+            <h2>💰 My Finance Tracker</h2>
+            <div class="text-end">
+                <small class="text-muted">Current Balance</small>
+                <h2 id="total-balance">$0.00</h2>
             </div>
         </div>
 
-        <div class="card p-3 mb-4 shadow-sm">
-            <form id="transaction-form" class="row g-2 align-items-center">
-                <div class="col-md-2"><input type="date" id="date" class="form-control" required></div>
-                <div class="col-md-3"><input type="text" id="desc" placeholder="Description" class="form-control" required></div>
-                <div class="col-md-2"><input type="text" id="cat" placeholder="Category" class="form-control" required></div>
-                <div class="col-md-2"><input type="number" id="amt" step="0.01" placeholder="Amount" class="form-control" required></div>
-                <div class="col-md-1">
-                    <select id="type" class="form-select">
-                        <option value="Expense">Expense</option>
-                        <option value="Income">Income</option>
-                    </select>
+        <div class="row">
+            <div class="col-md-5 mb-4">
+                <div class="card p-3 shadow-sm h-100">
+                    <h5 class="mb-3">Add New Entry</h5>
+                    <form id="transaction-form">
+                        <div class="mb-2"><input type="date" id="date" class="form-control" required></div>
+                        <div class="mb-2"><input type="text" id="desc" placeholder="Description (e.g. Rent)" class="form-control" required></div>
+                        <div class="mb-2"><input type="text" id="cat" placeholder="Category (e.g. Housing)" class="form-control" required></div>
+                        <div class="mb-2"><input type="number" id="amt" step="0.01" placeholder="Amount" class="form-control" required></div>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-8">
+                                <select id="type" class="form-select">
+                                    <option value="Expense">Expense 🔴</option>
+                                    <option value="Income">Income 🟢</option>
+                                </select>
+                            </div>
+                            <div class="col-4 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="recurring">
+                                    <label class="form-check-label" style="font-size: 0.8rem;">Recurring</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Add Transaction</button>
+                    </form>
                 </div>
-                <div class="col-md-1 text-center">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="recurring">
-                        <label class="form-check-label" style="font-size: 0.7rem;">Monthly</label>
+            </div>
+
+            <div class="col-md-7 mb-4">
+                <div class="card p-3 shadow-sm h-100 bg-white">
+                    <h5 class="mb-3">Spending Breakdown</h5>
+                    <div style="height: 250px; display: flex; justify-content: center;">
+                        <canvas id="categoryChart"></canvas>
                     </div>
                 </div>
-                <div class="col-md-1"><button type="submit" class="btn btn-success w-100">+</button></div>
-            </form>
+            </div>
         </div>
 
-        <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Category</th>
-                        <th>Amount</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="transaction-list"></tbody>
-            </table>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">Recent Transactions</div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-list"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
