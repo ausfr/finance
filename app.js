@@ -1,49 +1,59 @@
-const API_URL = "http://34.10.27.200:3000"; // Ensure this matches your External IP
+// REPLACE THIS IP WITH YOUR GOOGLE CLOUD EXTERNAL IP
+const API_URL = "http://34.10.27.200:3000"; 
 const CORRECT_PIN = "1234";
+
 let myChart = null;
 
+// 1. PIN Check
 function checkPin() {
     const input = document.getElementById('pin-input').value;
     if (input === CORRECT_PIN) {
         document.getElementById('auth-overlay').classList.add('hidden');
         document.getElementById('app-content').classList.remove('hidden');
-        fetchTransactions();
+        fetchTransactions(); // Load data only after unlock
     } else {
-        alert("Access Denied");
+        alert("Incorrect PIN");
     }
 }
 
+// 2. Fetch Data from Server
 async function fetchTransactions() {
     try {
         const res = await fetch(`${API_URL}/transactions`);
         const data = await res.json();
-        renderData(data);
+        renderDashboard(data);
     } catch (err) {
-        console.error("Sync Error:", err);
+        console.error("Error fetching data:", err);
+        alert("Could not connect to server. Check Console.");
     }
 }
 
-function renderData(transactions) {
+// 3. Render Table, Balance, and Chart
+function renderDashboard(transactions) {
     const list = document.getElementById('transaction-list');
     let balance = 0;
-    const categories = {};
+    const expenseCategories = {}; // For Chart
+    
     list.innerHTML = '';
 
     transactions.forEach(t => {
         const isExpense = t.type === 'Expense';
+        
+        // Math Logic
         balance += isExpense ? -t.amount : t.amount;
 
-        // Collect chart data
+        // Chart Logic (Only chart expenses)
         if (isExpense) {
-            categories[t.category] = (categories[t.category] || 0) + t.amount;
+            expenseCategories[t.category] = (expenseCategories[t.category] || 0) + t.amount;
         }
 
+        // Table HTML
         list.innerHTML += `
             <tr>
                 <td>${t.date} ${t.is_recurring ? '🔄' : ''}</td>
-                <td>${t.description}</td>
+                <td><strong>${t.description}</strong></td>
                 <td><span class="badge bg-secondary">${t.category}</span></td>
-                <td class="${isExpense ? 'text-danger' : 'text-success'}">
+                <td class="${isExpense ? 'amount-neg' : 'amount-pos'}">
                     ${isExpense ? '-' : '+'}$${t.amount.toFixed(2)}
                 </td>
                 <td>
@@ -53,32 +63,46 @@ function renderData(transactions) {
         `;
     });
 
+    // Update Balance Text
     document.getElementById('total-balance').innerText = `$${balance.toFixed(2)}`;
-    updateChart(categories);
+    
+    // Draw Chart
+    updateChart(expenseCategories);
 }
 
-function updateChart(categoryData) {
+// 4. Chart Logic
+function updateChart(data) {
     const ctx = document.getElementById('categoryChart').getContext('2d');
+    
+    // If a chart already exists, destroy it so we don't draw on top of it
     if (myChart) myChart.destroy();
 
     myChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: Object.keys(categoryData),
+            labels: Object.keys(data),
             datasets: [{
-                data: Object.values(categoryData),
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                data: Object.values(data),
+                backgroundColor: [
+                    '#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'
+                ],
+                borderWidth: 1
             }]
         },
         options: {
-            plugins: { title: { display: true, text: 'Spending Breakdown' } },
-            maintainAspectRatio: false
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' }
+            }
         }
     });
 }
 
+// 5. Add Transaction
 document.getElementById('transaction-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const payload = {
         date: document.getElementById('date').value,
         description: document.getElementById('desc').value,
@@ -88,18 +112,27 @@ document.getElementById('transaction-form').addEventListener('submit', async (e)
         is_recurring: document.getElementById('recurring').checked
     };
 
-    await fetch(`${API_URL}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    try {
+        const res = await fetch(`${API_URL}/transactions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-    e.target.reset();
-    fetchTransactions();
+        if (res.ok) {
+            e.target.reset(); // Clear form
+            fetchTransactions(); // Refresh list
+        } else {
+            alert("Server Error");
+        }
+    } catch (err) {
+        alert("Network Error: Enable 'Insecure Content' in browser settings.");
+    }
 });
 
+// 6. Delete Transaction
 async function deleteTransaction(id) {
-    if (confirm('Delete?')) {
+    if (confirm('Delete this item?')) {
         await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE' });
         fetchTransactions();
     }
